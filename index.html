@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bubble Sort Orizzontale</title>
+    <title>Bubble Sort Orizzontale Musicale</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -17,190 +17,274 @@
             padding: 20px;
         }
 
-        h1 { margin-bottom: 20px; }
+        h1 { margin-bottom: 20px; text-align: center;}
 
-        /* Contenitore delle barre */
+        /* Contenitore grafico */
         #array-container {
             display: flex;
-            align-items: flex-end; /* Allinea le barre in basso */
+            align-items: flex-end;
             justify-content: center;
-            height: 300px;
-            width: 80%;
+            height: 350px; /* Aumentato un po' per spazio */
+            width: 90%;
             border-bottom: 2px solid #555;
             padding: 10px;
-            gap: 4px; /* Spazio tra le barre */
+            gap: 4px;
         }
 
-        /* Stile della singola barra */
+        /* Stile barra */
         .bar {
-            background-color: #8a2be2; /* Viola di base */
-            width: 30px;
-            text-align: center;
-            color: transparent; /* Nasconde il numero se la barra è troppo piccola */
+            background-color: #8a2be2;
+            width: 100%; /* Si adatta al contenitore */
+            margin: 0 1px;
             border-top-left-radius: 5px;
             border-top-right-radius: 5px;
-            transition: height 0.2s ease;
+            transition: height 0.1s ease;
+            
+            /* Per centrare il numero in basso */
+            display: flex;
+            align-items: flex-end; 
+            justify-content: center;
+            padding-bottom: 5px;
+            font-size: 12px;
+            font-weight: bold;
+            overflow: hidden; /* Nasconde numero se barra troppo piccola */
+            box-shadow: 0px 0px 5px rgba(0,0,0,0.3);
         }
 
-        .bar:hover {
-            opacity: 0.8;
-        }
+        .bar:hover { opacity: 0.9; }
 
-        /* Colori di stato */
-        .comparing {
-            background-color: #ff4757 !important; /* Rosso per confronto */
-        }
-        
-        .swapping {
-            background-color: #eccc68 !important; /* Giallo per scambio */
-        }
-
-        .sorted {
-            background-color: #2ed573 !important; /* Verde per ordinato */
-        }
+        /* Classi di stato */
+        .comparing { background-color: #ff4757 !important; } /* Rosso */
+        .swapping { background-color: #eccc68 !important; color: #333; } /* Giallo (testo scuro per contrasto) */
+        .sorted { background-color: #2ed573 !important; } /* Verde */
 
         /* Pannello controlli */
         .controls {
             margin-top: 30px;
             display: flex;
+            flex-wrap: wrap;
             gap: 15px;
             align-items: center;
-            background: #333;
-            padding: 15px;
+            justify-content: center;
+            background: #2c2c2c;
+            padding: 20px;
             border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
         }
 
         button {
             padding: 10px 20px;
-            font-size: 16px;
+            font-size: 14px;
             cursor: pointer;
-            background-color: #3742fa;
-            color: white;
             border: none;
             border-radius: 5px;
-            transition: background 0.3s;
+            transition: transform 0.1s, background 0.3s;
+            font-weight: 600;
         }
 
-        button:hover { background-color: #5352ed; }
-        button:disabled { background-color: #555; cursor: not-allowed; }
+        button:active { transform: scale(0.95); }
+        
+        #btn-gen { background-color: #3742fa; color: white; }
+        #btn-sort { background-color: #2ed573; color: #1e1e1e; }
+        #btn-sound { background-color: #555; color: white; width: 120px;}
+        
+        #btn-sound.active {
+            background-color: #ff4757;
+            box-shadow: 0 0 10px #ff4757;
+        }
 
-        label { margin-left: 10px; }
+        button:disabled { background-color: #444; color: #888; cursor: not-allowed; }
+
+        .slider-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
     </style>
 </head>
 <body>
 
-    <h1>Bubble Sort Visualization</h1>
+    <h1>Bubble Sort Musicale 🎵</h1>
 
     <div id="array-container"></div>
 
     <div class="controls">
         <button onclick="generateArray()" id="btn-gen">Genera Array</button>
+        <button onclick="toggleSound()" id="btn-sound">Audio: OFF</button>
         <button onclick="startBubbleSort()" id="btn-sort">Ordina</button>
         
-        <div>
+        <div class="slider-group">
             <label for="speed">Velocità:</label>
-            <input type="range" id="speed" min="10" max="500" value="100">
+            <input type="range" id="speed" min="5" max="200" value="50">
         </div>
     </div>
 
     <script>
+        // --- VARIABILI GLOBALI ---
         const container = document.getElementById("array-container");
-        const speedInput = document.getElementById("speed");
-        const btnGen = document.getElementById("btn-gen");
+        const btnSound = document.getElementById("btn-sound");
         const btnSort = document.getElementById("btn-sort");
-        
-        let array = [];
-        const numBars = 30; // Numero di elementi
+        const btnGen = document.getElementById("btn-gen");
+        const speedInput = document.getElementById("speed");
 
-        // Funzione per generare un numero casuale
-        function randomInt(min, max) {
-            return Math.floor(Math.random() * (max - min + 1) + min);
+        let array = [];
+        const numBars = 25; // Numero barre ridotto per leggibilità numeri
+        let audioCtx = null;
+        let isMuted = true;
+
+        // --- GESTIONE AUDIO (Web Audio API) ---
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
         }
 
-        // Genera il nuovo array e crea i div HTML
+        function toggleSound() {
+            initAudio(); // Il browser richiede un gesto utente per avviare l'audio context
+            isMuted = !isMuted;
+            
+            if (isMuted) {
+                btnSound.innerText = "Audio: OFF";
+                btnSound.classList.remove("active");
+            } else {
+                btnSound.innerText = "Audio: ON";
+                btnSound.classList.add("active");
+            }
+        }
+
+        function playNote(value) {
+            if (isMuted || !audioCtx) return;
+
+            const osc = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+
+            osc.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+
+            // Mappiamo il valore (20-300) a una frequenza (200Hz - 800Hz)
+            // Più è alta la barra, più acuto è il suono
+            osc.frequency.value = 200 + (value * 2); 
+            osc.type = "sine"; // Tipo di onda: sine, square, triangle, sawtooth
+
+            // Volume basso per non disturbare
+            gainNode.gain.value = 0.1;
+
+            osc.start();
+            // Suona per una frazione di secondo molto breve
+            osc.stop(audioCtx.currentTime + 0.05); 
+        }
+
+
+        // --- LOGICA DI BASE ---
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        // Calcola ritardo in base allo slider
+        function getDelay() {
+            // Invertiamo: slider a destra (valore alto) = attesa minore (veloce)
+            // Slider min 5, max 200. 
+            // Vogliamo delay da 200ms (lento) a 5ms (veloce)
+            return 205 - speedInput.value; 
+        }
+
         function generateArray() {
             container.innerHTML = "";
             array = [];
+            
             for (let i = 0; i < numBars; i++) {
-                let val = randomInt(20, 280); // Altezza random
+                let val = Math.floor(Math.random() * 250) + 20; // 20 a 270
                 array.push(val);
 
                 const bar = document.createElement("div");
                 bar.classList.add("bar");
                 bar.style.height = `${val}px`;
-                // Rendi la larghezza responsive in base al numero di barre
-                bar.style.width = `${100 / numBars}%`; 
+                bar.style.width = `${100 / numBars}%`; // Larghezza dinamica
+                
+                // ADDON 1: Inseriamo il numero dentro la barra
+                bar.innerText = val;
+
                 container.appendChild(bar);
             }
-            // Riabilita il tasto ordina se era disabilitato
             btnSort.disabled = false;
         }
 
-        // Funzione di pausa (Promise) per l'animazione
-        function sleep(ms) {
-            return new Promise(resolve => setTimeout(resolve, ms));
-        }
+        // --- ALGORITMO BUBBLE SORT ---
 
-        // Ottiene la velocità attuale (invertita: valore alto = più lento)
-        function getDelay() {
-            return 510 - speedInput.value; 
-        }
-
-        // ALGORITMO BUBBLE SORT CON ANIMAZIONE
         async function startBubbleSort() {
             btnSort.disabled = true;
             btnGen.disabled = true;
-            
+
             const bars = document.getElementsByClassName("bar");
 
             for (let i = 0; i < array.length; i++) {
-                
                 for (let j = 0; j < array.length - i - 1; j++) {
                     
-                    // 1. Evidenzia elementi in confronto (ROSSO)
-                    bars[j].classList.add("comparing");
-                    bars[j + 1].classList.add("comparing");
+                    // Selezione barre
+                    let bar1 = bars[j];
+                    let bar2 = bars[j + 1];
 
-                    // Pausa per visualizzare il confronto
-                    await sleep(getDelay());
+                    // Visualizzazione: confronto (ROSSO)
+                    bar1.classList.add("comparing");
+                    bar2.classList.add("comparing");
 
-                    // Logica di confronto
-                    let val1 = parseInt(bars[j].style.height);
-                    let val2 = parseInt(bars[j + 1].style.height);
+                    // ADDON 2: Suona le note dei due elementi
+                    let val1 = parseInt(bar1.innerText); // Leggiamo il testo, non l'altezza style
+                    let val2 = parseInt(bar2.innerText);
+                    
+                    playNote(val1);
+                    await sleep(getDelay() / 2); // Piccola pausa tra le due note
+                    playNote(val2);
 
+                    // Scambio se necessario
                     if (val1 > val2) {
-                        // 2. Se bisogna scambiare, evidenzia in GIALLO (opzionale)
-                        bars[j].classList.add("swapping");
-                        bars[j+1].classList.add("swapping");
-                        
-                        // Scambio visivo (altezze)
-                        bars[j].style.height = `${val2}px`;
-                        bars[j + 1].style.height = `${val1}px`;
-                        
+                        bar1.classList.add("swapping");
+                        bar2.classList.add("swapping");
+
+                        // SWAP DATI VISIVI (Altezza + Testo)
+                        // Scambio altezze
+                        let tempHeight = bar1.style.height;
+                        bar1.style.height = bar2.style.height;
+                        bar2.style.height = tempHeight;
+
+                        // Scambio numeri (ADDON 1)
+                        bar1.innerText = val2;
+                        bar2.innerText = val1;
+
                         await sleep(getDelay());
                         
-                        bars[j].classList.remove("swapping");
-                        bars[j+1].classList.remove("swapping");
+                        bar1.classList.remove("swapping");
+                        bar2.classList.remove("swapping");
+                    } else {
+                        // Anche se non scambiamo, aspettiamo un attimo per mostrare il confronto
+                        await sleep(getDelay());
                     }
 
-                    // 3. Rimuovi colore confronto
-                    bars[j].classList.remove("comparing");
-                    bars[j + 1].classList.remove("comparing");
+                    // Reset colore confronto
+                    bar1.classList.remove("comparing");
+                    bar2.classList.remove("comparing");
                 }
-
-                // 4. L'elemento alla fine è ordinato (VERDE)
-                // L'indice corretto è array.length - i - 1
+                
+                // Elemento ordinato (VERDE)
                 bars[array.length - i - 1].classList.add("sorted");
             }
-            
-            // Assicura che anche il primo elemento sia verde alla fine
+            // L'ultimo rimasto è ordinato
             bars[0].classList.add("sorted");
+            
+            // Suono finale di successo (scala ascendente veloce)
+            if(!isMuted && audioCtx) {
+                for(let k=0; k<array.length; k++) {
+                     playNote(parseInt(bars[k].innerText));
+                     await sleep(20);
+                }
+            }
 
             btnGen.disabled = false;
             btnSort.disabled = false;
         }
 
-        // Genera array all'avvio
+        // Avvio iniziale
         generateArray();
 
     </script>
