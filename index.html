@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bubble Sort Orizzontale</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1a1a1a;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 { margin-bottom: 20px; }
+
+        /* Contenitore delle barre */
+        #array-container {
+            display: flex;
+            align-items: flex-end; /* Allinea le barre in basso */
+            justify-content: center;
+            height: 300px;
+            width: 80%;
+            border-bottom: 2px solid #555;
+            padding: 10px;
+            gap: 4px; /* Spazio tra le barre */
+        }
+
+        /* Stile della singola barra */
+        .bar {
+            background-color: #8a2be2; /* Viola di base */
+            width: 30px;
+            text-align: center;
+            color: transparent; /* Nasconde il numero se la barra è troppo piccola */
+            border-top-left-radius: 5px;
+            border-top-right-radius: 5px;
+            transition: height 0.2s ease;
+        }
+
+        .bar:hover {
+            opacity: 0.8;
+        }
+
+        /* Colori di stato */
+        .comparing {
+            background-color: #ff4757 !important; /* Rosso per confronto */
+        }
+        
+        .swapping {
+            background-color: #eccc68 !important; /* Giallo per scambio */
+        }
+
+        .sorted {
+            background-color: #2ed573 !important; /* Verde per ordinato */
+        }
+
+        /* Pannello controlli */
+        .controls {
+            margin-top: 30px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            background: #333;
+            padding: 15px;
+            border-radius: 10px;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #3742fa;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+
+        button:hover { background-color: #5352ed; }
+        button:disabled { background-color: #555; cursor: not-allowed; }
+
+        label { margin-left: 10px; }
+    </style>
+</head>
+<body>
+
+    <h1>Bubble Sort Visualization</h1>
+
+    <div id="array-container"></div>
+
+    <div class="controls">
+        <button onclick="generateArray()" id="btn-gen">Genera Array</button>
+        <button onclick="startBubbleSort()" id="btn-sort">Ordina</button>
+        
+        <div>
+            <label for="speed">Velocità:</label>
+            <input type="range" id="speed" min="10" max="500" value="100">
+        </div>
+    </div>
+
+    <script>
+        const container = document.getElementById("array-container");
+        const speedInput = document.getElementById("speed");
+        const btnGen = document.getElementById("btn-gen");
+        const btnSort = document.getElementById("btn-sort");
+        
+        let array = [];
+        const numBars = 30; // Numero di elementi
+
+        // Funzione per generare un numero casuale
+        function randomInt(min, max) {
+            return Math.floor(Math.random() * (max - min + 1) + min);
+        }
+
+        // Genera il nuovo array e crea i div HTML
+        function generateArray() {
+            container.innerHTML = "";
+            array = [];
+            for (let i = 0; i < numBars; i++) {
+                let val = randomInt(20, 280); // Altezza random
+                array.push(val);
+
+                const bar = document.createElement("div");
+                bar.classList.add("bar");
+                bar.style.height = `${val}px`;
+                // Rendi la larghezza responsive in base al numero di barre
+                bar.style.width = `${100 / numBars}%`; 
+                container.appendChild(bar);
+            }
+            // Riabilita il tasto ordina se era disabilitato
+            btnSort.disabled = false;
+        }
+
+        // Funzione di pausa (Promise) per l'animazione
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        // Ottiene la velocità attuale (invertita: valore alto = più lento)
+        function getDelay() {
+            return 510 - speedInput.value; 
+        }
+
+        // ALGORITMO BUBBLE SORT CON ANIMAZIONE
+        async function startBubbleSort() {
+            btnSort.disabled = true;
+            btnGen.disabled = true;
+            
+            const bars = document.getElementsByClassName("bar");
+
+            for (let i = 0; i < array.length; i++) {
+                
+                for (let j = 0; j < array.length - i - 1; j++) {
+                    
+                    // 1. Evidenzia elementi in confronto (ROSSO)
+                    bars[j].classList.add("comparing");
+                    bars[j + 1].classList.add("comparing");
+
+                    // Pausa per visualizzare il confronto
+                    await sleep(getDelay());
+
+                    // Logica di confronto
+                    let val1 = parseInt(bars[j].style.height);
+                    let val2 = parseInt(bars[j + 1].style.height);
+
+                    if (val1 > val2) {
+                        // 2. Se bisogna scambiare, evidenzia in GIALLO (opzionale)
+                        bars[j].classList.add("swapping");
+                        bars[j+1].classList.add("swapping");
+                        
+                        // Scambio visivo (altezze)
+                        bars[j].style.height = `${val2}px`;
+                        bars[j + 1].style.height = `${val1}px`;
+                        
+                        await sleep(getDelay());
+                        
+                        bars[j].classList.remove("swapping");
+                        bars[j+1].classList.remove("swapping");
+                    }
+
+                    // 3. Rimuovi colore confronto
+                    bars[j].classList.remove("comparing");
+                    bars[j + 1].classList.remove("comparing");
+                }
+
+                // 4. L'elemento alla fine è ordinato (VERDE)
+                // L'indice corretto è array.length - i - 1
+                bars[array.length - i - 1].classList.add("sorted");
+            }
+            
+            // Assicura che anche il primo elemento sia verde alla fine
+            bars[0].classList.add("sorted");
+
+            btnGen.disabled = false;
+            btnSort.disabled = false;
+        }
+
+        // Genera array all'avvio
+        generateArray();
+
+    </script>
+</body>
+</html>
