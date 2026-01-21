@@ -153,26 +153,34 @@
         }
 
         function playNote(value) {
-            if (isMuted || !audioCtx) return;
+    if (isMuted || !audioCtx) return;
 
-            const osc = audioCtx.createOscillator();
-            const gainNode = audioCtx.createGain();
+    const osc = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
 
-            osc.connect(gainNode);
-            gainNode.connect(audioCtx.destination);
+    osc.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
 
-            // Mappiamo il valore (20-300) a una frequenza (200Hz - 800Hz)
-            // Più è alta la barra, più acuto è il suono
-            osc.frequency.value = 200 + (value * 2); 
-            osc.type = "sine"; // Tipo di onda: sine, square, triangle, sawtooth
+    // Mappatura frequenza
+    osc.frequency.value = 200 + (value * 2);
+    osc.type = "sine"; 
 
-            // Volume basso per non disturbare
-            gainNode.gain.value = 0.1;
+    const now = audioCtx.currentTime;
+    const duration = 0.1; // Durata nota breve
 
-            osc.start();
-            // Suona per una frazione di secondo molto breve
-            osc.stop(audioCtx.currentTime + 0.05); 
-        }
+    // --- CORREZIONE SATURAZIONE (INVILUPPO) ---
+    // 1. Il volume parte da 0 (silenzio)
+    gainNode.gain.setValueAtTime(0, now);
+    
+    // 2. Sale rapidamente a 0.05 (ATTACK) - Molto più basso di prima per evitare distorsione
+    gainNode.gain.linearRampToValueAtTime(0.05, now + 0.01);
+    
+    // 3. Scende esponenzialmente quasi a 0 (DECAY/RELEASE)
+    gainNode.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+
+    osc.start(now);
+    osc.stop(now + duration); 
+}
 
 
         // --- LOGICA DI BASE ---
